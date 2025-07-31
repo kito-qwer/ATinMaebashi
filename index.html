@@ -1,32 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-	<meta charset="UTF-8">
-	<title>CSV データ表示</title>
+	<meta charset="UTF-8" />
+	<title>前橋市の積算温度</title>
 </head>
 <body>
-	<h1>CSV データ</h1>
-	<table id="data-table" border="1"></table>
+	<h1>前橋市の積算温度</h1>
+
+	<label for="from-date">開始日：</label>
+	<input type="date" id="from-date" />
+	<label for="to-date">終了日：</label>
+	<input type="date" id="to-date" />
+	<button id="filter-btn">積算温度計算</button>
 
 	<script>
-		async function loadCSV() {
-			const res = await fetch("./data.csv"); // 同じリポジトリ内のCSVを取得
-			const text = await res.text();
-
-			const rows = text.trim().split("\n").map(r => r.split(","));
-			const table = document.getElementById("data-table");
-
-			rows.forEach((row, i) => {
-				const tr = document.createElement("tr");
-				row.forEach(cell => {
-					const el = document.createElement(i === 0 ? "th" : "td");
-					el.textContent = cell;
-					tr.appendChild(el);
-				});
-				table.appendChild(tr);
-			});
+		function parseDate(dateStr) {
+			const [y, m, d] = dateStr.split('-').map(Number);
+			return new Date(y, m - 1, d);
 		}
-		loadCSV();
+
+		let csvData = [];
+
+		async function loadCSVtoArray() {
+			const res = await fetch("./data.csv");
+			const text = await res.text();
+			const rows = text.trim().split("\n").map(r => r.split(","));
+			const header = rows[0];
+			const data = rows.slice(1).map(row => {
+				const obj = {};
+				row.forEach((cell, i) => {
+					const key = header[i];
+					if (key.toLowerCase().includes("date")) {
+						obj[key] = parseDate(cell);
+					} else {
+						obj[key] = Number(cell);
+					}
+				});
+				return obj;
+			});
+			return data;
+		}
+
+		// ページロード時にデータ読み込み
+		window.addEventListener('load', async () => {
+			csvData = await loadCSVtoArray();
+		});
+
+		document.getElementById('filter-btn').addEventListener('click', () => {
+			const fromInput = document.getElementById('from-date').value;
+			const toInput = document.getElementById('to-date').value;
+
+			if (!fromInput || !toInput) {
+				alert('開始日と終了日を両方入力してください');
+				return;
+			}
+
+			const fromDate = new Date(fromInput);
+			const toDate = new Date(toInput);
+
+			const filtered = csvData.filter(item => {
+				const dateKey = Object.keys(item).find(k => k.toLowerCase() === 'date');
+				if (!dateKey) return false;
+				const d = item[dateKey];
+				return d >= fromDate && d <= toDate;
+			});
+
+			if (filtered.length === 0) {
+				alert('指定期間に該当データがありません');
+				return;
+			}
+
+			const tempKey = Object.keys(filtered[0]).find(k => k.toLowerCase().includes('temp'));
+			if (!tempKey) {
+				alert('温度データが見つかりません');
+				return;
+			}
+
+			const sumTemp = filtered.reduce((acc, cur) => acc + (cur[tempKey] || 0), 0);
+
+			alert(`指定期間の積算温度合計: ${sumTemp}`);
+		});
 	</script>
 </body>
 </html>
