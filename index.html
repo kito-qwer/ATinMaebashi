@@ -24,16 +24,23 @@
 		async function loadCSVtoArray() {
 			const res = await fetch("./data.csv");
 			const text = await res.text();
+
 			const rows = text.trim().split("\n").map(r => r.split(","));
 			const header = rows[0];
+
 			const data = rows.slice(1).map(row => {
 				const obj = {};
 				row.forEach((cell, i) => {
-					const key = header[i];
-					if (key.toLowerCase().includes("date")) {
+					const key = header[i].trim();
+					if (key === "date") {
 						obj[key] = parseDate(cell);
-					} else {
+						console.log(`   - Assigned 'date':`, obj[key]);
+					}
+					else if(key === "temp") {
 						obj[key] = Number(cell);
+						console.log(`   - Assigned 'temp':`, obj[key]);
+					} else {
+						console.log(`   - Skipping key: '${key}' (not 'date' or 'temp')`);
 					}
 				});
 				return obj;
@@ -59,7 +66,7 @@
 			const toDate = new Date(toInput);
 
 			const filtered = csvData.filter(item => {
-				const dateKey = Object.keys(item).find(k => k.toLowerCase() === 'date');
+				const dateKey = Object.keys(item).find(k => k === 'date');
 				if (!dateKey) return false;
 				const d = item[dateKey];
 				return d >= fromDate && d <= toDate;
@@ -70,7 +77,7 @@
 				return;
 			}
 
-			const tempKey = Object.keys(filtered[0]).find(k => k.toLowerCase().includes('temp'));
+			const tempKey = Object.keys(filtered[0]).find(k => k === "temp");
 			if (!tempKey) {
 				alert('温度データが見つかりません');
 				return;
