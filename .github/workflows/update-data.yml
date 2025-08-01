@@ -1,5 +1,8 @@
 name: Update Temperature Data
 
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: "0 16 * * *" # JST 01:00 = UTC 16:00
