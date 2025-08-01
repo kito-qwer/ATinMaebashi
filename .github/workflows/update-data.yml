@@ -16,17 +16,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm' # npmのキャッシュを有効化し、ビルドを高速化
 
       - name: Install dependencies
-        run: npm init -y
+        # package-lock.json に基づいて依存関係をクリーンインストール
+        run: npm ci
 
       - name: Fetch and append temperature data
         run: node scripts/fetch_temp.js
+      
+      - name: Fetch and append forecast temperature data
+        run: node scripts/fetch_temp_forecast.js
 
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.csv
-          git commit -m "Update temperature data"
-          git push
+          
+          git add data.csv data_forecast.csv
+
+          if ! git diff --staged --quiet; then
+            git commit -m "Update temperature data for $(date +'%Y-%m-%d')"
+            git push
+          else
+            echo "No changes to commit."
+          fi

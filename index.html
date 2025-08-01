@@ -21,8 +21,8 @@
 
 		let csvData = [];
 
-		async function loadCSVtoArray() {
-			const res = await fetch("./data.csv");
+		async function loadCSVtoArray(filename) {
+			const res = await fetch(filename);
 			const text = await res.text();
 
 			const rows = text.trim().split("\n").map(r => r.split(","));
@@ -34,13 +34,13 @@
 					const key = header[i].trim();
 					if (key === "date") {
 						obj[key] = parseDate(cell);
-						console.log(`   - Assigned 'date':`, obj[key]);
+						// console.log(`   - Assigned 'date':`, obj[key]);
 					}
 					else if(key === "temp") {
 						obj[key] = Number(cell);
-						console.log(`   - Assigned 'temp':`, obj[key]);
+						// console.log(`   - Assigned 'temp':`, obj[key]);
 					} else {
-						console.log(`   - Skipping key: '${key}' (not 'date' or 'temp')`);
+						// console.log(`   - Skipping key: '${key}' (not 'date' or 'temp')`);
 					}
 				});
 				return obj;
@@ -50,7 +50,9 @@
 
 		// ページロード時にデータ読み込み
 		window.addEventListener('load', async () => {
-			csvData = await loadCSVtoArray();
+			const data1 = await loadCSVtoArray("./data.csv");
+			const data2 = await loadCSVtoArray("./data_forecast.csv");
+			csvData = [...data1, ...data2];
 		});
 
 		document.getElementById('filter-btn').addEventListener('click', () => {
@@ -62,8 +64,11 @@
 				return;
 			}
 
-			const fromDate = new Date(fromInput);
-			const toDate = new Date(toInput);
+			const fromDate = parseDate(fromInput);
+			const toDate = parseDate(toInput);
+			const timeDiff = toDate.getTime() - fromDate.getTime();
+			const expectedDayCount = Math.round(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+			toDate.setHours(23, 59, 59, 999);
 
 			const filtered = csvData.filter(item => {
 				const dateKey = Object.keys(item).find(k => k === 'date');
@@ -72,8 +77,15 @@
 				return d >= fromDate && d <= toDate;
 			});
 
+			filtered.sort((a, b) => a.date - b.date);
+
 			if (filtered.length === 0) {
 				alert('指定期間に該当データがありません');
+				return;
+			}
+
+			if (expectedDayCount != filtered.length) {
+				alert('指定期間にデータの不足があります');
 				return;
 			}
 
